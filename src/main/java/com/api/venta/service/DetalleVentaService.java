@@ -4,6 +4,7 @@ import com.api.venta.dto.DetalleVentaDTO;
 import com.api.venta.entity.DetalleVenta;
 import com.api.venta.entity.Producto;
 import com.api.venta.entity.Venta;
+import com.api.venta.exception.ResourceNotFoundException;
 import com.api.venta.repository.DetalleVentaRepository;
 import com.api.venta.repository.ProductoRepository;
 import com.api.venta.repository.VentaRepository;
@@ -11,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class DetalleVentaService {
@@ -25,61 +25,91 @@ public class DetalleVentaService {
     @Autowired
     private ProductoRepository productoRepository;
 
-    public DetalleVenta crearDetalleVenta(DetalleVentaDTO detalleVentaDTO) {
-        try {
-            Optional<Venta> ventaOptional = ventaRepository.findById(detalleVentaDTO.getFolio());
-            Optional<Producto> productoOptional = productoRepository.findById(detalleVentaDTO.getIdProducto());
-
-            if (ventaOptional.isPresent() && productoOptional.isPresent()) {
-                Venta venta = ventaOptional.get();
-                Producto producto = productoOptional.get();
-
-                DetalleVenta detalleVenta = new DetalleVenta();
-                detalleVenta.setFolio(venta);
-                detalleVenta.setIdProducto(producto);
-                detalleVenta.setCantidad(detalleVentaDTO.getCantidad());
-
-                // Calcular monto y actualizar la venta
-                double montoDetalle = producto.getPrecio() * detalleVentaDTO.getCantidad();
-                venta.setMonto(venta.getMonto() + montoDetalle);
-                ventaRepository.save(venta);
-
-                // Guardar el detalle de la venta
-                return detalleVentaRepository.save(detalleVenta);
-            } else {
-                throw new RuntimeException("No se encontró la venta o el producto correspondiente.");
-            }
-        } catch (Exception e) {
-            // Puedes agregar logs aquí para depuración
-            throw new RuntimeException("Error al procesar la solicitud: " + e.getMessage());
-        }
-    }
-
-
-    public List<DetalleVenta> getAllDetallesVenta() {
+    public List<DetalleVenta> obtenerTodosLosDetalles() {
         return detalleVentaRepository.findAll();
     }
 
-    public Optional<DetalleVenta> getDetalleVentaById(Long id) {
-        return detalleVentaRepository.findById(id);
+    public DetalleVenta buscarDetalleId(Long id) throws ResourceNotFoundException {
+        return detalleVentaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un detalle de venta para el id :: " + id));
     }
 
-    public DetalleVenta updateDetalleVenta(Long id, DetalleVenta detalleVenta) {
-        if (detalleVentaRepository.existsById(id)) {
-            detalleVenta.setIdDetalle(id);
-            return detalleVentaRepository.save(detalleVenta);
-        } else {
-            throw new RuntimeException("No se encontró un detalle de venta con el id " + id);
-        }
+    public DetalleVenta agregarDetalle(DetalleVentaDTO detalleVentaDTO) throws ResourceNotFoundException {
+        DetalleVenta detalleVenta = new DetalleVenta();
+
+        // Obtener la venta
+        Venta venta = ventaRepository.findById(detalleVentaDTO.getFolio())
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró una venta para el folio :: " + detalleVentaDTO.getFolio()));
+        detalleVenta.setFolio(venta);
+
+        // Obtener el producto
+        Producto producto = productoRepository.findById(detalleVentaDTO.getIdProducto())
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un producto para el id :: " + detalleVentaDTO.getIdProducto()));
+        detalleVenta.setIdProducto(producto);
+
+        // Establecer la cantidad
+        detalleVenta.setCantidad(detalleVentaDTO.getCantidad());
+
+        // Calcular el monto
+        double montoDetalle = detalleVenta.getCantidad() * detalleVenta.getIdProducto().getPrecio();
+
+        // Guardar el detalle de venta
+        DetalleVenta savedDetalleVenta = detalleVentaRepository.save(detalleVenta);
+
+        // Actualizar el monto de la venta
+        venta.setMonto(venta.getMonto() + montoDetalle);
+        ventaRepository.save(venta);
+
+        return savedDetalleVenta;
     }
 
-    public String deleteDetalleVenta(Long id) {
-        if (detalleVentaRepository.existsById(id)) {
-            detalleVentaRepository.deleteById(id);
-            return "Detalle de venta eliminado";
-        } else {
-            throw new RuntimeException("No se encontró un detalle de venta con el id " + id);
-        }
+
+    public DetalleVenta actualizarDetalle(Long id, DetalleVentaDTO detalleVentaDTO) throws ResourceNotFoundException {
+        DetalleVenta existingDetalleVenta = detalleVentaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un detalle de venta para el id :: " + id));
+
+        // Obtener la venta
+        Venta venta = ventaRepository.findById(detalleVentaDTO.getFolio())
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró una venta para el folio :: " + detalleVentaDTO.getFolio()));
+        existingDetalleVenta.setFolio(venta);
+
+        // Obtener el producto
+        Producto producto = productoRepository.findById(detalleVentaDTO.getIdProducto())
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un producto para el id :: " + detalleVentaDTO.getIdProducto()));
+        existingDetalleVenta.setIdProducto(producto);
+
+        // Restar la cantidad anterior al monto de la venta
+        double montoDetalleAnterior = existingDetalleVenta.getCantidad() * existingDetalleVenta.getIdProducto().getPrecio();
+        venta.setMonto(venta.getMonto() - montoDetalleAnterior);
+
+        // Actualizar las propiedades necesarias según la lógica de tu aplicación
+        existingDetalleVenta.setCantidad(detalleVentaDTO.getCantidad());
+
+        // Calcular el monto con la nueva cantidad
+        double montoDetalleNuevo = existingDetalleVenta.getCantidad() * existingDetalleVenta.getIdProducto().getPrecio();
+
+        // Sumar el nuevo monto al monto de la venta
+        venta.setMonto(venta.getMonto() + montoDetalleNuevo);
+        ventaRepository.save(venta);
+
+        // Guardar el detalle de venta
+        DetalleVenta savedDetalleVenta = detalleVentaRepository.save(existingDetalleVenta);
+
+        return savedDetalleVenta;
+    }
+
+
+
+    public void eliminarDetalle(Long id) throws ResourceNotFoundException {
+        DetalleVenta detalleVenta = detalleVentaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un detalle de venta para el id :: " + id));
+
+        // Restar el monto del detalle de venta de la venta asociada
+        Venta venta = detalleVenta.getFolio();
+        double montoDetalle = detalleVenta.getCantidad() * detalleVenta.getIdProducto().getPrecio();
+        venta.setMonto(venta.getMonto() - montoDetalle);
+        ventaRepository.save(venta);
+
+        detalleVentaRepository.delete(detalleVenta);
     }
 }
-

@@ -20,6 +20,7 @@ public class Venta {
     @JoinColumn(name = "id_empleado")
     private Empleado idEmpleado;
 
+
     public Long getFolio() {
         return folio;
     }
