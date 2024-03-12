@@ -1,100 +1,66 @@
 package com.api.venta.controller;
 
+import com.api.venta.dto.DetalleVentaDTO;
 import com.api.venta.entity.DetalleVenta;
-import com.api.venta.entity.Producto;
-import com.api.venta.entity.Venta;
-import com.api.venta.exception.ResourceNotFoundException;
-import com.api.venta.repository.DetalleVentaRepository;
-import com.api.venta.repository.ProductoRepository;
-import com.api.venta.repository.VentaRepository;
+import com.api.venta.service.DetalleVentaService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/detalle-ventas")
 public class DetalleVentaController {
+
     @Autowired
-    private DetalleVentaRepository detalleVentaRepository;
-    @Autowired
-    private VentaRepository ventaRepository;
-    @Autowired
-    private ProductoRepository productoRepository;
+    private DetalleVentaService detalleVentaService;
 
-    @GetMapping("/detalleVentas")
-    public List<DetalleVenta> obtenerTodosLosDetallesVenta() {
-        return detalleVentaRepository.findAll();
+    @PostMapping
+    public ResponseEntity<?> crearDetalleVenta(@RequestBody DetalleVentaDTO detalleVentaDTO) {
+        try {
+            DetalleVenta detalleVenta = detalleVentaService.crearDetalleVenta(detalleVentaDTO);
+            return new ResponseEntity<>(detalleVenta, HttpStatus.CREATED);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Error al procesar la solicitud: " + e.getMessage());
+        }
     }
 
-    @GetMapping("/detalleVentas/{id}")
-    public ResponseEntity<DetalleVenta> buscarDetalleVentaPorId(@PathVariable(value = "id") Long idDetalleVenta) throws ResourceNotFoundException {
-        DetalleVenta detalleVenta = detalleVentaRepository.findById(idDetalleVenta)
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un detalle de venta para el id ::" + idDetalleVenta));
-        return ResponseEntity.ok().body(detalleVenta);
+    @GetMapping
+    public ResponseEntity<List<DetalleVenta>> getAllDetallesVenta() {
+        List<DetalleVenta> detallesVenta = detalleVentaService.getAllDetallesVenta();
+        return new ResponseEntity<>(detallesVenta, HttpStatus.OK);
     }
 
-    @PostMapping("/detalleVentas")
-    public DetalleVenta agregarDetalleVenta(@RequestBody Map<String, Object> datosDetalleVenta) throws ResourceNotFoundException {
-        // Validar que las IDs existan en las tablas correspondientes
-        Venta venta = ventaRepository.findById((Long) datosDetalleVenta.get("folio"))
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró una venta para el folio :: " + datosDetalleVenta.get("folio")));
-
-        Producto producto = productoRepository.findById((Long) datosDetalleVenta.get("id_producto"))
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un producto para el id :: " + datosDetalleVenta.get("id_producto")));
-
-        // Crear un nuevo detalle de venta
-        DetalleVenta nuevoDetalleVenta = new DetalleVenta();
-        nuevoDetalleVenta.setFolio(venta);
-        nuevoDetalleVenta.setId_producto(producto);
-        nuevoDetalleVenta.setCantidad((int) datosDetalleVenta.get("cantidad"));
-
-        // Actualizar el monto de la venta basándose en el nuevo detalle
-        double montoTotal = venta.getMonto() + (producto.getPrecio() * nuevoDetalleVenta.getCantidad());
-        venta.setMonto(montoTotal);
-        ventaRepository.save(venta);
-
-        return detalleVentaRepository.save(nuevoDetalleVenta);
+    @GetMapping("/{id}")
+    public ResponseEntity<DetalleVenta> getDetalleVentaById(@PathVariable Long id) {
+        Optional<DetalleVenta> detalleVenta = detalleVentaService.getDetalleVentaById(id);
+        return detalleVenta.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    @PutMapping("/detalleVentas/{id}")
-    public ResponseEntity<DetalleVenta> actualizarDetalleVenta(@PathVariable(value = "id") Long idDetalleVenta, @RequestBody DetalleVenta datosDetalleVenta)
-            throws ResourceNotFoundException {
-        DetalleVenta detalleVenta = detalleVentaRepository.findById(idDetalleVenta)
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un detalle de venta para el id :: " + idDetalleVenta));
-
-        // Actualizar los datos del detalle de venta
-        detalleVenta.setCantidad(datosDetalleVenta.getCantidad());
-
-        // Actualizar el monto de la venta basándose en los nuevos datos del detalle
-        Venta venta = detalleVenta.getFolio();
-        double montoTotal = venta.getMonto() - (detalleVenta.getId_producto().getPrecio() * detalleVenta.getCantidad());
-
-        // Actualizar el monto con la nueva cantidad
-        venta.setMonto(montoTotal + (datosDetalleVenta.getId_producto().getPrecio() * datosDetalleVenta.getCantidad()));
-        ventaRepository.save(venta);
-
-        final DetalleVenta detalleVentaActualizado = detalleVentaRepository.save(detalleVenta);
-        return ResponseEntity.ok(detalleVentaActualizado);
+    @PutMapping("/{id}")
+    public ResponseEntity<DetalleVenta> updateDetalleVenta(@PathVariable Long id, @RequestBody DetalleVenta detalleVenta) {
+        try {
+            DetalleVenta detalleVentaActualizado = detalleVentaService.updateDetalleVenta(id, detalleVenta);
+            return new ResponseEntity<>(detalleVentaActualizado, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
-    @DeleteMapping("/detalleVentas/{id}")
-    public Map<String, Boolean> eliminarDetalleVenta(@PathVariable(value = "id") Long idDetalleVenta) throws ResourceNotFoundException {
-        DetalleVenta detalleVenta = detalleVentaRepository.findById(idDetalleVenta)
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un detalle de venta para el id :: " + idDetalleVenta));
-
-        // Actualizar el monto de la venta restando el monto del detalle antes de eliminarlo
-        Venta venta = detalleVenta.getFolio();
-        double montoTotal = venta.getMonto() - (detalleVenta.getId_producto().getPrecio() * detalleVenta.getCantidad());
-        venta.setMonto(montoTotal);
-        ventaRepository.save(venta);
-
-        detalleVentaRepository.delete(detalleVenta);
-        Map<String, Boolean> response = new HashMap<>();
-        response.put("eliminado", Boolean.TRUE);
-        return response;
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteDetalleVenta(@PathVariable Long id) {
+        try {
+            String mensaje = detalleVentaService.deleteDetalleVenta(id);
+            return new ResponseEntity<>(mensaje, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        }
     }
 }
+

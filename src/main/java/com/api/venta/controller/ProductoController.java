@@ -1,62 +1,63 @@
 package com.api.venta.controller;
 
-import com.api.venta.entity.Empleado;
 import com.api.venta.entity.Producto;
-import com.api.venta.exception.ResourceNotFoundException;
-import com.api.venta.repository.EmpleadoRepository;
-import com.api.venta.repository.ProductoRepository;
+import com.api.venta.service.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/productos")
 public class ProductoController {
+
     @Autowired
-    private ProductoRepository productoRepository;
+    private ProductoService productoService;
 
-    @GetMapping("/productos")
-    public List<Producto> obtenerTodosLosProductos() {
-        return productoRepository.findAll();
+    // Obtener todos los productos
+    @GetMapping
+    public ResponseEntity<List<Producto>> getAllProductos() {
+        List<Producto> productos = productoService.getAllProductos();
+        return new ResponseEntity<>(productos, HttpStatus.OK);
     }
 
-    @GetMapping("/productos/{id}")
-    public ResponseEntity<Producto> buscarProductoPorId(@PathVariable(value = "id") Long idProducto) throws ResourceNotFoundException {
-        Producto producto = productoRepository.findById(idProducto).orElseThrow(() -> new ResourceNotFoundException("No se encontró un producto para el id ::" + idProducto));
-        return ResponseEntity.ok().body(producto);
+    // Obtener producto por ID
+    @GetMapping("/{id}")
+    public ResponseEntity<Producto> getProductoById(@PathVariable Long id) {
+        Optional<Producto> producto = productoService.getProductoById(id);
+        return producto.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    @PostMapping("/productos")
-    public Producto agregarProducto(@RequestBody Producto producto) {
-        return productoRepository.save(producto);
+    // Crear un nuevo producto
+    @PostMapping
+    public ResponseEntity<Producto> createProducto(@RequestBody Producto producto) {
+        Producto nuevoProducto = productoService.createProducto(producto);
+        return new ResponseEntity<>(nuevoProducto, HttpStatus.CREATED);
     }
 
-    @PutMapping("/productos/{id}")
-    public ResponseEntity<Producto> actualizarProducto(@PathVariable(value = "id") Long idProducto, @RequestBody Producto datosProducto)
-            throws ResourceNotFoundException {
-        Producto producto = productoRepository.findById(idProducto)
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un producto para el id :: " + idProducto));
-
-        producto.setNombre_producto(datosProducto.getNombre_producto());
-        producto.setDescripcion(datosProducto.getDescripcion());
-        producto.setPrecio(datosProducto.getPrecio());
-
-        final Producto productoActualizado = productoRepository.save(producto);
-        return ResponseEntity.ok(productoActualizado);
+    // Actualizar un producto existente
+    @PutMapping("/{id}")
+    public ResponseEntity<Producto> updateProducto(@PathVariable Long id, @RequestBody Producto producto) {
+        try {
+            Producto productoActualizado = productoService.updateProducto(id, producto);
+            return new ResponseEntity<>(productoActualizado, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
-    @DeleteMapping("/productos/{id}")
-    public Map<String, Boolean> eliminarProducto(@PathVariable(value = "id") Long idProducto) throws ResourceNotFoundException {
-        Producto producto = productoRepository.findById(idProducto)
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un producto para el id :: " + idProducto));
-
-        productoRepository.delete(producto);
-        Map<String, Boolean> response = new HashMap<>();
-        response.put("eliminado", Boolean.TRUE);
-        return response;
+    // Eliminar un producto por ID
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteProducto(@PathVariable Long id) {
+        try {
+            String mensaje = productoService.deleteProducto(id);
+            return new ResponseEntity<>(mensaje, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        }
     }
 }

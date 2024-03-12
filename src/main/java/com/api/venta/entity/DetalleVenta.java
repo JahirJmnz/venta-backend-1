@@ -8,22 +8,22 @@ public class DetalleVenta {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id_detalle")
-    private String id_detalle;
+    private Long idDetalle;
     @ManyToOne
     @JoinColumn(name = "folio")
     private Venta folio;
     @ManyToOne
     @JoinColumn(name = "id_producto")
-    private Producto id_producto;
+    private Producto idProducto;
     @Column(name = "cantidad")
     private int cantidad;
 
-    public String getId_detalle() {
-        return id_detalle;
+    public Long getIdDetalle() {
+        return idDetalle;
     }
 
-    public void setId_detalle(String id_detalle) {
-        this.id_detalle = id_detalle;
+    public void setIdDetalle(Long idDetalle) {
+        this.idDetalle = idDetalle;
     }
 
     public Venta getFolio() {
@@ -34,12 +34,12 @@ public class DetalleVenta {
         this.folio = folio;
     }
 
-    public Producto getId_producto() {
-        return id_producto;
+    public Producto getIdProducto() {
+        return idProducto;
     }
 
-    public void setId_producto(Producto id_producto) {
-        this.id_producto = id_producto;
+    public void setIdProducto(Producto idProducto) {
+        this.idProducto = idProducto;
     }
 
     public int getCantidad() {

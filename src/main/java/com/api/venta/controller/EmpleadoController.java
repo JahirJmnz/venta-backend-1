@@ -1,61 +1,63 @@
 package com.api.venta.controller;
 
 import com.api.venta.entity.Empleado;
-import com.api.venta.exception.ResourceNotFoundException;
-import com.api.venta.repository.EmpleadoRepository;
+import com.api.venta.service.EmpleadoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/empleados")
 public class EmpleadoController {
+
     @Autowired
-    private EmpleadoRepository empleadoRepository;
+    private EmpleadoService empleadoService;
 
-    @GetMapping("/empleados")
-    public List<Empleado> obtenerTodosLosEmpleados() {
-        return empleadoRepository.findAll();
+    // Obtener todos los empleados
+    @GetMapping
+    public ResponseEntity<List<Empleado>> getAllEmpleados() {
+        List<Empleado> empleados = empleadoService.getAllEmpleados();
+        return new ResponseEntity<>(empleados, HttpStatus.OK);
     }
 
-    @GetMapping("/empleados/{id}")
-    public ResponseEntity<Empleado> buscarEmpleadoPorId(@PathVariable(value = "id") Long idEmpleado) throws ResourceNotFoundException {
-        Empleado empleado = empleadoRepository.findById(idEmpleado).orElseThrow(() -> new ResourceNotFoundException("No se encontró un empleado para el id ::" + idEmpleado));
-        return ResponseEntity.ok().body(empleado);
+    // Obtener empleado por ID
+    @GetMapping("/{id}")
+    public ResponseEntity<Empleado> getEmpleadoById(@PathVariable Long id) {
+        Optional<Empleado> empleado = empleadoService.getEmpleadoById(id);
+        return empleado.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    @PostMapping("/empleados")
-    public Empleado agregarEmpleado(@RequestBody Empleado empleado) {
-        return empleadoRepository.save(empleado);
+    // Crear un nuevo empleado
+    @PostMapping
+    public ResponseEntity<Empleado> createEmpleado(@RequestBody Empleado empleado) {
+        Empleado nuevoEmpleado = empleadoService.createEmpleado(empleado);
+        return new ResponseEntity<>(nuevoEmpleado, HttpStatus.CREATED);
     }
 
-    @PutMapping("/empleados/{id}")
-    public ResponseEntity<Empleado> actualizarEmpleado(@PathVariable(value = "id") Long idEmpleado, @RequestBody Empleado datosEmpleado)
-            throws ResourceNotFoundException {
-        Empleado empleado = empleadoRepository.findById(idEmpleado)
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un empleado para el id :: " + idEmpleado));
-
-        empleado.setNombre_empleado(datosEmpleado.getNombre_empleado());
-        empleado.setApPaterno(datosEmpleado.getApPaterno());
-        empleado.setApMaterno(datosEmpleado.getApMaterno());
-        empleado.setCurp(datosEmpleado.getCurp());
-
-        final Empleado empleadoActualizado = empleadoRepository.save(empleado);
-        return ResponseEntity.ok(empleadoActualizado);
+    // Actualizar un empleado existente
+    @PutMapping("/{id}")
+    public ResponseEntity<Empleado> updateEmpleado(@PathVariable Long id, @RequestBody Empleado empleado) {
+        try {
+            Empleado empleadoActualizado = empleadoService.updateEmpleado(id, empleado);
+            return new ResponseEntity<>(empleadoActualizado, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
-    @DeleteMapping("/empleados/{id}")
-    public Map<String, Boolean> eliminarEmpleado(@PathVariable(value = "id") Long idEmpleado) throws ResourceNotFoundException {
-        Empleado empleado = empleadoRepository.findById(idEmpleado)
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró un empleado para el id :: " + idEmpleado));
-
-        empleadoRepository.delete(empleado);
-        Map<String, Boolean> response = new HashMap<>();
-        response.put("eliminado", Boolean.TRUE);
-        return response;
+    // Eliminar un empleado por ID
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteEmpleado(@PathVariable Long id) {
+        try {
+            String mensaje = empleadoService.deleteEmpleado(id);
+            return new ResponseEntity<>(mensaje, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        }
     }
 }

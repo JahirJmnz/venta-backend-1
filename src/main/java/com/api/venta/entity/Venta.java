@@ -15,10 +15,10 @@ public class Venta {
     @Column(name = "fecha_venta")
     private LocalDateTime fechaVenta;
     @Column(name = "monto")
-    private Double monto;
+    private Double monto = 0.0;
     @ManyToOne
     @JoinColumn(name = "id_empleado")
-    private Empleado id_empleado;
+    private Empleado idEmpleado;
 
     public Long getFolio() {
         return folio;
@@ -44,11 +44,11 @@ public class Venta {
         this.monto = monto;
     }
 
-    public Empleado getId_empleado() {
-        return id_empleado;
+    public Empleado getIdEmpleado() {
+        return idEmpleado;
     }
 
-    public void setId_empleado(Empleado id_empleado) {
-        this.id_empleado = id_empleado;
+    public void setIdEmpleado(Empleado idEmpleado) {
+        this.idEmpleado = idEmpleado;
     }
 }

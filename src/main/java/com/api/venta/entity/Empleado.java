@@ -8,9 +8,9 @@ public class Empleado {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id_empleado")
-    private Long id_empleado;
+    private Long idEmpleado;
     @Column(name = "nombre_empleado")
-    private String nombre_empleado;
+    private String nombreEmpleado;
     @Column(name = "ap_paterno")
     private String apPaterno;
     @Column(name = "ap_materno")
@@ -18,20 +18,20 @@ public class Empleado {
     @Column(name = "curp", unique = true)
     private String curp;
 
-    public Long getId_empleado() {
-        return id_empleado;
+    public Long getIdEmpleado() {
+        return idEmpleado;
     }
 
-    public void setId_empleado(Long id_empleado) {
-        this.id_empleado = id_empleado;
+    public void setIdEmpleado(Long idEmpleado) {
+        this.idEmpleado = idEmpleado;
     }
 
-    public String getNombre_empleado() {
-        return nombre_empleado;
+    public String getNombreEmpleado() {
+        return nombreEmpleado;
     }
 
-    public void setNombre_empleado(String nombre_empleado) {
-        this.nombre_empleado = nombre_empleado;
+    public void setNombreEmpleado(String nombreEmpleado) {
+        this.nombreEmpleado = nombreEmpleado;
     }
 
     public String getApPaterno() {
