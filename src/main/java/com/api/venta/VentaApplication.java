@@ -13,6 +13,7 @@ public class VentaApplication {
 		SpringApplication.run(VentaApplication.class, args);
 	}
 
+	//Bean para permitir el acceso a la API desde cualquier origen
 	@Bean
 	WebMvcConfigurer corsConfigurer() {
 		return new WebMvcConfigurer() {
