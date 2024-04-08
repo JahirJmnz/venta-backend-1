@@ -73,11 +73,12 @@ public class JwtService {
         String token = Jwts
                 .builder()
                 .subject(user.getEmail())
+                .claim("role", user.getRole())  // Agrega el rol del usuario como un claim
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + + 24*60*60*1000))
                 .signWith(getSinginKey())
                 .compact();
-
+    
         return token;
     }
 
